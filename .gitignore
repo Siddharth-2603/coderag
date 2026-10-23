@@ -1,0 +1,34 @@
+# Go
+/go-service/bin/
+*.exe
+*.test
+*.out
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# Env & secrets
+.env
+.env.*
+*.local
+
+# Data & models (don't commit large artifacts)
+/data/
+*.bin
+*.gguf
+
+# Editor / OS
+.DS_Store
+.idea/
+*.swp
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/

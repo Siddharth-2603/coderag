@@ -1,0 +1,5 @@
+# Pin versions when we add real deps (milestone 1). Kept empty on purpose for now
+# so we only install what we actually use. Likely candidates:
+#   qdrant-client        (if we choose Qdrant)
+#   psycopg[binary]      (if we choose pgvector)
+#   a chosen embedding client
