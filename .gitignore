@@ -32,3 +32,6 @@ env/
 *.tfstate
 *.tfstate.*
 .terraform/
+
+# Generated index
+ingestion/index.json

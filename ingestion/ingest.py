@@ -1,72 +1,70 @@
-"""Ingestion pipeline (milestone 0 skeleton).
+"""Ingestion pipeline (M1 — working thin slice).
 
-Flow we are building toward:
-    load documents -> chunk -> embed -> upsert into the vector store
+Flow:  load documents -> chunk -> embed -> upsert into the vector store
 
-Milestone 0 just wires the skeleton with clear TODOs so each step can be
-filled in and tested independently. Nothing here calls a paid API yet.
+M1 uses a dependency-free stack (HashEmbedder + InMemoryStore) so the whole
+thing runs with zero setup and zero cost. The store is saved to disk so the
+query step (and later the Go service) can read it.
+
+Usage:
+    python3 ingest.py <docs_dir> [--out index.json]
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import argparse
 from pathlib import Path
+from typing import List, Tuple
+
+from chunking import chunk_text
+from embeddings import HashEmbedder
+from store import Chunk, InMemoryStore
+
+# Files we treat as ingestible text. Expand as needed.
+TEXT_SUFFIXES = {".md", ".txt", ".py", ".go", ".rst", ".yaml", ".yml", ".json", ".toml"}
 
 
-@dataclass
-class Chunk:
-    """A piece of a document, with metadata for retrieval + eval."""
-
-    doc_id: str
-    text: str
-    metadata: dict = field(default_factory=dict)
-
-
-def load_documents(root: Path) -> list[tuple[str, str]]:
-    """Return (doc_id, text) pairs.
-
-    TODO(M1): walk the directory, read code + docs files. For code, keep
-    enough context (file path, surrounding lines) that chunks stay useful.
-    """
-    raise NotImplementedError("load_documents: implement in milestone 1")
+def load_documents(root: Path) -> List[Tuple[str, str]]:
+    """Return (doc_id, text) pairs for every text-like file under root."""
+    docs: List[Tuple[str, str]] = []
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and path.suffix.lower() in TEXT_SUFFIXES:
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            doc_id = str(path.relative_to(root))
+            docs.append((doc_id, text))
+    return docs
 
 
-def chunk_document(doc_id: str, text: str) -> list[Chunk]:
-    """Split one document into retrievable chunks.
-
-    TODO(M1): start with a simple fixed-size + overlap strategy. Make the
-    strategy configurable (M4) so the eval harness can compare strategies.
-    """
-    raise NotImplementedError("chunk_document: implement in milestone 1")
-
-
-def embed(chunks: list[Chunk]) -> list[list[float]]:
-    """Turn chunk text into embedding vectors.
-
-    TODO(M1): call the embedding source (hosted API or local model). Pick the
-    cheapest option that works first — see docs/COST-GUARDRAILS.md.
-    """
-    raise NotImplementedError("embed: implement in milestone 1")
-
-
-def upsert(chunks: list[Chunk], vectors: list[list[float]]) -> None:
-    """Write chunks + vectors into the vector store.
-
-    TODO(M1): decide Qdrant vs pgvector, then implement the client call.
-    """
-    raise NotImplementedError("upsert: implement in milestone 1")
-
-
-def run(root: Path) -> None:
+def run(root: Path, out: Path) -> None:
     docs = load_documents(root)
-    all_chunks: list[Chunk] = []
+    if not docs:
+        print(f"no ingestible files found under {root}")
+        return
+
+    embedder = HashEmbedder(dim=256)
+    store = InMemoryStore()
+
+    all_chunks: List[Chunk] = []
     for doc_id, text in docs:
-        all_chunks.extend(chunk_document(doc_id, text))
-    vectors = embed(all_chunks)
-    upsert(all_chunks, vectors)
-    print(f"ingested {len(all_chunks)} chunks from {len(docs)} documents")
+        all_chunks.extend(chunk_text(doc_id, text))
+
+    vectors = [embedder.embed(c.text) for c in all_chunks]
+    store.upsert(all_chunks, vectors)
+    store.save(out)
+
+    print(f"ingested {len(all_chunks)} chunks from {len(docs)} documents -> {out}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Ingest documents into the RAG index.")
+    parser.add_argument("docs_dir", type=Path, help="directory of documents to ingest")
+    parser.add_argument("--out", type=Path, default=Path("index.json"), help="index output path")
+    args = parser.parse_args()
+    run(args.docs_dir, args.out)
 
 
 if __name__ == "__main__":
-    # Placeholder entry point. Milestone 1 wires argument parsing + a real path.
-    print("ingestion skeleton — implement load/chunk/embed/upsert in milestone 1")
+    main()
