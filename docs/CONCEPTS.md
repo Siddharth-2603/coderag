@@ -28,3 +28,23 @@ Goal: be able to explain each of these in an interview without looking.
 ## Retrieval metrics (preview, built in M3)
 - recall@k = of all test questions, how often the correct chunk appears in the top-k results.
 - answer relevance = once generation is added, does the final answer actually address the question.
+
+## Vector store
+- Vector store = where chunk vectors live + how we search them.
+- upsert = "update or insert": save chunks+vectors (update if exists, else insert).
+- search = compare a query vector to stored vectors by cosine, sort, return top-k. This IS retrieval.
+- Our InMemoryStore = two lists + brute-force: it scores EVERY stored vector each search.
+- Brute-force is exact (guaranteed true top-k) but O(N) per query — fine for small N, too slow at millions.
+- Real vector DBs use ANN (Approximate Nearest Neighbor): prebuilt index skips most vectors, near-exact but far faster.
+- ANN tradeoff: trade a tiny bit of accuracy for huge speed (millions in ms).
+- Common ANN technique = HNSW (Hierarchical Navigable Small World graph). Qdrant uses this.
+- Library analogy: brute-force = read every spine; ANN = catalog routes you to the right shelf.
+- Same upsert/search interface means InMemoryStore -> QdrantStore swaps with no pipeline changes.
+
+## RAG flow (ingestion vs query)
+- RAG has two phases at different times: ingestion (offline, batch) and query (online, per-request).
+- Ingestion (ingest.py): load -> chunk -> embed -> upsert -> save index. Expensive; run when docs change.
+- Query (query.py): load index -> embed the question -> cosine top-k search -> return chunks. Cheap; per request.
+- Query does NOT re-chunk/re-embed docs; it only embeds the single incoming question.
+- RULE: ingestion and query MUST use the same embedder, else vectors live in different spaces and cosine is meaningless.
+- When swapping to a real model (M1.5), change the embedder in BOTH ingest.py and query.py together.
