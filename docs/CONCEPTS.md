@@ -107,3 +107,13 @@ Goal: be able to explain each of these in an interview without looking.
 - Why 60: it's the canonical default from the original 2009 RRF paper; most libraries ship 60.
 - How to choose k for your own system: it's a hyperparameter — tune it by MEASURING recall@k on your data.
 - Recurring theme: chunk size, overlap, top_k, embedder, k — all knobs resolved by the eval harness, never by guessing.
+
+## Go serving layer (connected to the index)
+- Polyglot split: Python ingests + builds index.json; Go loads it and serves retrievals. Mirrors real production.
+- Go struct JSON tags must EXACTLY match the Python-written JSON keys (doc_id, chunk_id, text, metadata, vectors).
+- Query embedding must happen at request time (you can't precompute an unknown question) -> Go calls Gemini REST too.
+- Same-embedder rule across languages: Go must use the SAME model (gemini-embedding-001) as Python ingestion.
+- Go loads chunks+vectors into memory once at startup; each /query embeds the question then cosine-searches.
+- Observed: ~0.6-1.6s per query, almost all of it the Gemini API call; cosine search itself is sub-millisecond.
+- That latency is the motivation for a future semantic cache (avoid re-embedding/re-answering repeat queries).
+- Ops gotcha: a stale server can hold the port ("address already in use"); find+kill with lsof -ti:PORT.

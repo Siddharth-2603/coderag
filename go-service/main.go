@@ -1,8 +1,8 @@
 // Command go-service is the RAG serving layer.
 //
-// Milestone 0: a minimal HTTP server with a health check and a stub /query
-// endpoint. Later milestones add real retrieval, streaming (SSE), semantic
-// caching, rate limiting, and metrics.
+// It loads the index.json produced by the Python ingestion pipeline, embeds
+// incoming questions via Gemini, and serves the most similar chunks. This is
+// the Go serving layer in front of the Python-built index.
 package main
 
 import (
@@ -10,25 +10,46 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
+// server holds the shared dependencies for request handlers.
+type server struct {
+	index    *Index
+	embedder *GeminiEmbedder
+}
+
 func main() {
-	addr := ":" + envOr("PORT", "8080")
+	loadDotEnv("../.env") // best-effort; ignored if absent
+
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		log.Fatal("GEMINI_API_KEY not set (put it in ../.env or the environment)")
+	}
+
+	indexPath := envOr("INDEX_PATH", "index.json")
+	idx, err := LoadIndex(indexPath)
+	if err != nil {
+		log.Fatalf("loading index: %v", err)
+	}
+	log.Printf("loaded index: %d chunks from %s", len(idx.Chunks), indexPath)
+
+	srv := &server{index: idx, embedder: NewGeminiEmbedder(apiKey)}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handleHealth)
-	mux.HandleFunc("POST /query", handleQuery)
+	mux.HandleFunc("POST /query", srv.handleQuery)
 
-	srv := &http.Server{
+	addr := ":" + envOr("PORT", "8080")
+	httpSrv := &http.Server{
 		Addr:         addr,
 		Handler:      logging(mux),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
-
 	log.Printf("serving layer listening on %s", addr)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server error: %v", err)
 	}
 }
@@ -37,21 +58,17 @@ func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// queryRequest is the shape a client sends to ask a question.
 type queryRequest struct {
 	Question string `json:"question"`
 	TopK     int    `json:"top_k"`
 }
 
-// queryResponse is a stub. Milestone 1 fills Chunks from the vector store;
-// milestone 2 adds a streamed Answer.
 type queryResponse struct {
-	Question string   `json:"question"`
-	Chunks   []string `json:"chunks"`
-	Note     string   `json:"note"`
+	Question string        `json:"question"`
+	Results  []ScoredChunk `json:"results"`
 }
 
-func handleQuery(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleQuery(w http.ResponseWriter, r *http.Request) {
 	var req queryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
@@ -61,17 +78,19 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "question is required"})
 		return
 	}
-	if req.TopK == 0 {
-		req.TopK = 5
+	if req.TopK <= 0 {
+		req.TopK = 3
 	}
 
-	// TODO(M1): embed the question, query the vector store, return real chunks.
-	resp := queryResponse{
-		Question: req.Question,
-		Chunks:   nil,
-		Note:     "stub: retrieval not wired yet (milestone 1)",
+	// Embed the question (same model as ingestion), then cosine-search the index.
+	queryVec, err := s.embedder.Embed(req.Question)
+	if err != nil {
+		log.Printf("embed error: %v", err)
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "embedding failed"})
+		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	results := s.index.Search(queryVec, req.TopK)
+	writeJSON(w, http.StatusOK, queryResponse{Question: req.Question, Results: results})
 }
 
 // --- helpers ---
@@ -95,4 +114,23 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// loadDotEnv is a minimal KEY=VALUE reader so we don't need a dependency.
+func loadDotEnv(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") || !strings.Contains(line, "=") {
+			continue
+		}
+		key, value, _ := strings.Cut(line, "=")
+		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+		if _, exists := os.LookupEnv(key); !exists {
+			os.Setenv(key, value)
+		}
+	}
 }
