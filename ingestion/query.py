@@ -12,17 +12,17 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from embeddings import HashEmbedder
+from embeddings import load_env, make_embedder
 from store import InMemoryStore
 
 
-def run(question: str, index_path: Path, top_k: int) -> None:
+def run(question: str, index_path: Path, top_k: int, embedder_name: str) -> None:
     if not index_path.exists():
         print(f"index not found: {index_path} (run ingest.py first)")
         return
 
     store = InMemoryStore.load(index_path)
-    embedder = HashEmbedder(dim=256)
+    embedder = make_embedder(embedder_name)
     query_vec = embedder.embed(question)
 
     results = store.search(query_vec, top_k)
@@ -39,8 +39,11 @@ def main() -> None:
     parser.add_argument("question", help="the question to ask")
     parser.add_argument("--index", type=Path, default=Path("index.json"))
     parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument("--embedder", default="gemini", choices=["gemini", "hash"],
+                        help="must match the embedder used at ingest time")
     args = parser.parse_args()
-    run(args.question, args.index, args.top_k)
+    load_env(Path(__file__).resolve().parent.parent / ".env")
+    run(args.question, args.index, args.top_k, args.embedder)
 
 
 if __name__ == "__main__":

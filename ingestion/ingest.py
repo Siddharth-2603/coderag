@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from chunking import chunk_text
-from embeddings import HashEmbedder
+from embeddings import load_env, make_embedder
 from store import Chunk, InMemoryStore
 
 # Files we treat as ingestible text. Expand as needed.
@@ -38,13 +38,13 @@ def load_documents(root: Path) -> List[Tuple[str, str]]:
     return docs
 
 
-def run(root: Path, out: Path) -> None:
+def run(root: Path, out: Path, embedder_name: str) -> None:
     docs = load_documents(root)
     if not docs:
         print(f"no ingestible files found under {root}")
         return
 
-    embedder = HashEmbedder(dim=256)
+    embedder = make_embedder(embedder_name)
     store = InMemoryStore()
 
     all_chunks: List[Chunk] = []
@@ -55,15 +55,19 @@ def run(root: Path, out: Path) -> None:
     store.upsert(all_chunks, vectors)
     store.save(out)
 
-    print(f"ingested {len(all_chunks)} chunks from {len(docs)} documents -> {out}")
+    print(f"ingested {len(all_chunks)} chunks from {len(docs)} documents "
+          f"using '{embedder_name}' -> {out}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest documents into the RAG index.")
     parser.add_argument("docs_dir", type=Path, help="directory of documents to ingest")
     parser.add_argument("--out", type=Path, default=Path("index.json"), help="index output path")
+    parser.add_argument("--embedder", default="gemini", choices=["gemini", "hash"],
+                        help="which embedder to use (must match at query time)")
     args = parser.parse_args()
-    run(args.docs_dir, args.out)
+    load_env(Path(__file__).resolve().parent.parent / ".env")
+    run(args.docs_dir, args.out, args.embedder)
 
 
 if __name__ == "__main__":

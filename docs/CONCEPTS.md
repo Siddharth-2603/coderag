@@ -48,3 +48,13 @@ Goal: be able to explain each of these in an interview without looking.
 - Query does NOT re-chunk/re-embed docs; it only embeds the single incoming question.
 - RULE: ingestion and query MUST use the same embedder, else vectors live in different spaces and cosine is meaningless.
 - When swapping to a real model (M1.5), change the embedder in BOTH ingest.py and query.py together.
+
+## Real embeddings (M1.5 — Gemini)
+- Real embedding model (Gemini gemini-embedding-001) captures MEANING; matches synonyms/paraphrases, not just exact words.
+- Proof: query "how does a client prove its identity?" -> Gemini ranks auth.md #1; hash embedder ranks it WRONG (caching.md #1).
+- Same Embedder interface means swapping HashEmbedder -> GeminiEmbedder changed only which class we build, not the pipeline.
+- make_embedder() factory enforces the same-embedder rule: ingest and query both build from one place, cannot drift.
+- Gemini vectors are 3072-dim (vs hash 256); different dim = different space = must re-ingest, can't mix indexes.
+- Called the REST API with urllib (no SDK): one small HTTPS POST per text; allowed even where big downloads are blocked.
+- Gemini scores sit in a compressed range (~0.5-0.7); what matters is the RELATIVE gap (related > unrelated), not absolute value.
+- API key kept in gitignored .env, loaded via a tiny load_env(); never committed, never printed.

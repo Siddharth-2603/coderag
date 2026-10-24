@@ -35,3 +35,4 @@ env/
 
 # Generated index
 ingestion/index.json
+ingestion/index_*.json
