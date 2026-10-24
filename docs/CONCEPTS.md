@@ -97,3 +97,13 @@ Goal: be able to explain each of these in an interview without looking.
 - LESSON: hybrid is only as good as BOTH rankers; fusing a strong + a weak signal can hurt. Don't assume fancy = better.
 - Fixes: weight the fusion toward the strong ranker, or use a real lexical ranker (BM25). Or document the finding.
 - Interview gold: "I measured, got a counterintuitive regression, and explained the cause" > "I added hybrid search".
+
+## RRF code + the k constant
+- scores.get(chunk_id, 0.0) + contribution = ACCUMULATE: a chunk in both lists adds both contributions (don't overwrite).
+- enumerate(ranking, start=1) = 1-based rank; the formula 1/(k+rank) expects positions starting at 1.
+- sorted(..., key=lambda kv: kv[1], reverse=True) = order chunks by fused score, highest first.
+- k is a damping constant: small k -> rank 1 dominates hugely (1/2 vs 1/3); large k -> positions nearly equal weight.
+- Small k = trust the very top of each list; large k = reward AGREEMENT across lists over raw top position.
+- Why 60: it's the canonical default from the original 2009 RRF paper; most libraries ship 60.
+- How to choose k for your own system: it's a hyperparameter — tune it by MEASURING recall@k on your data.
+- Recurring theme: chunk size, overlap, top_k, embedder, k — all knobs resolved by the eval harness, never by guessing.
