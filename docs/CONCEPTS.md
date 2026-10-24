@@ -73,3 +73,15 @@ Goal: be able to explain each of these in an interview without looking.
 - Too few dims -> constant collisions -> unrelated texts look similar -> noisy retrieval.
 - For real models, each dimension encodes some learned feature of meaning, so more dims = more nuance.
 - Tradeoff: more dims = richer representation BUT more storage + slower comparison (compare all dims each search).
+
+## Eval harness (M3 — the differentiator)
+- Eval harness = replace "it feels better" with measured numbers over a labelled test set.
+- Needs 3 things: ground-truth test set, a metric, a runner.
+- Ground truth = questions each labelled with which doc(s) count as a correct retrieval.
+- Label by DOC not chunk id: chunk ids shift when we re-chunk (M4); docs are stable.
+- recall@k = fraction of questions where a relevant doc appears in the top-k retrieved.
+- "Hit" = at least one retrieved chunk came from a relevant doc (set intersection).
+- Measured result: hash recall@1 = 0.50, gemini recall@1 = 1.00 (semantic wins big).
+- Metric design matters: recall@3 over 5 docs was too easy (random scores high); top_k=1 exposed the real gap.
+- Write questions worded DIFFERENTLY from the docs, so eval tests meaning not word overlap.
+- Senior signal: critique your own metric (is it hard enough to discriminate?), not just report it.

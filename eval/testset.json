@@ -1,0 +1,45 @@
+{
+  "description": "Ground-truth eval set. Each question is labelled with the source doc(s) whose chunks count as a correct retrieval. Questions are deliberately worded differently from the docs to test semantic understanding, not word overlap.",
+  "questions": [
+    {
+      "question": "how does a client prove who it is before being allowed in?",
+      "relevant_docs": ["auth.md"]
+    },
+    {
+      "question": "what happens when my session credential expires?",
+      "relevant_docs": ["auth.md"]
+    },
+    {
+      "question": "can a repeated question reuse an earlier result?",
+      "relevant_docs": ["caching.md"]
+    },
+    {
+      "question": "how are near-duplicate lookups avoided to save work?",
+      "relevant_docs": ["caching.md"]
+    },
+    {
+      "question": "how does the system scale up when traffic increases?",
+      "relevant_docs": ["deployment.md"]
+    },
+    {
+      "question": "how do we release a new version without downtime?",
+      "relevant_docs": ["deployment.md"]
+    },
+    {
+      "question": "how can I tell how long a request took and where time went?",
+      "relevant_docs": ["logging.md"]
+    },
+    {
+      "question": "what format are the operational metrics exported in?",
+      "relevant_docs": ["logging.md"]
+    },
+    {
+      "question": "what stops one caller from overwhelming the service?",
+      "relevant_docs": ["rate-limiting.md"]
+    },
+    {
+      "question": "how does a caller know it is about to be throttled?",
+      "relevant_docs": ["rate-limiting.md"]
+    }
+  ]
+}
