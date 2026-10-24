@@ -85,3 +85,15 @@ Goal: be able to explain each of these in an interview without looking.
 - Metric design matters: recall@3 over 5 docs was too easy (random scores high); top_k=1 exposed the real gap.
 - Write questions worded DIFFERENTLY from the docs, so eval tests meaning not word overlap.
 - Senior signal: critique your own metric (is it hard enough to discriminate?), not just report it.
+
+## Hybrid search + RRF (M4)
+- Semantic embeddings capture meaning but can miss exact terms (error codes, headers, identifiers).
+- Keyword/lexical search nails exact tokens but misses meaning. Hybrid = run both, fuse the rankings.
+- RRF (Reciprocal Rank Fusion) fuses ranked lists using ONLY rank position: score = sum of 1/(k+rank), k=60.
+- RRF ignores raw scores (cosine vs term-frequency are different scales); it trusts POSITION, not value.
+- A doc ranked high in BOTH lists accumulates the most fused score and rises to the top.
+- MEASURED RESULT (surprise): hybrid recall@1 = 0.83 was WORSE than pure gemini 1.00.
+- Cause: our keyword ranker (hash embedder) is weak (0.58 alone); equal-weight fusion let noise drag good results down.
+- LESSON: hybrid is only as good as BOTH rankers; fusing a strong + a weak signal can hurt. Don't assume fancy = better.
+- Fixes: weight the fusion toward the strong ranker, or use a real lexical ranker (BM25). Or document the finding.
+- Interview gold: "I measured, got a counterintuitive regression, and explained the cause" > "I added hybrid search".

@@ -40,6 +40,14 @@
     {
       "question": "how does a caller know it is about to be throttled?",
       "relevant_docs": ["rate-limiting.md"]
+    },
+    {
+      "question": "what does a 429 response mean?",
+      "relevant_docs": ["rate-limiting.md"]
+    },
+    {
+      "question": "which header reports the X-RateLimit-Remaining value?",
+      "relevant_docs": ["rate-limiting.md"]
     }
   ]
 }
