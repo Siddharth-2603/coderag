@@ -58,3 +58,18 @@ Goal: be able to explain each of these in an interview without looking.
 - Called the REST API with urllib (no SDK): one small HTTPS POST per text; allowed even where big downloads are blocked.
 - Gemini scores sit in a compressed range (~0.5-0.7); what matters is the RELATIVE gap (related > unrelated), not absolute value.
 - API key kept in gitignored .env, loaded via a tiny load_env(); never committed, never printed.
+
+## Hash embedder internals (how the numbers appear)
+- A vector = a fixed-length list of numbers; dim buckets all starting at 0.
+- For each word: hash it (md5 -> big number), bucket = hash % dim, pick +1/-1 from a hash bit, add to that bucket.
+- So the vector is basically a word-count tally scattered across dim buckets.
+- Same word -> same hash -> same bucket every time (deterministic); repeating a word increases that bucket's value.
+- Shared words -> same buckets hit -> high cosine; different words (synonyms) -> different buckets -> ~0 similarity (the weakness).
+
+## Dimension (what it's for)
+- Dimension = number of buckets/numbers in the vector (hash: 256, Gemini: 3072).
+- More dimensions = more room to keep distinct things apart; fewer forced overlaps.
+- Hash collision = different inputs forced into the same bucket (happens a lot when dim is tiny).
+- Too few dims -> constant collisions -> unrelated texts look similar -> noisy retrieval.
+- For real models, each dimension encodes some learned feature of meaning, so more dims = more nuance.
+- Tradeoff: more dims = richer representation BUT more storage + slower comparison (compare all dims each search).
