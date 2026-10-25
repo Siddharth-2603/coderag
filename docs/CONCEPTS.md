@@ -189,3 +189,16 @@ Goal: be able to explain each of these in an interview without looking.
 - Observed the agent REPHRASE the question into its own tool query ("authentication token expiration") — real reasoning, not forwarding.
 - Version lesson: create_react_agent (langgraph.prebuilt) is deprecated in v1.0; current is create_agent from langchain.agents (needs the `langchain` package).
 - Gemini may return structured content ([{'type':'text','text':...}]) not a plain string; normalize before printing.
+
+## Hand-built LangGraph agent (step 4 — the real skill)
+- Prebuilt create_agent() hides the graph; building it by hand is how you actually learn LangGraph.
+- STATE = TypedDict with messages: Annotated[list, add_messages]. add_messages is a REDUCER = APPENDS (not replaces).
+  The append behavior is what makes state accumulate = the agent's memory.
+- agent_node: prepend system prompt, call tool-bound LLM, return {"messages":[response]} so it's appended.
+- tools_node: read last message's tool_calls, look up each tool by name, run with LLM args, wrap result in ToolMessage
+  (tool_call_id links the result to the specific call). Append results.
+- conditional edge should_continue: if last_message.tool_calls present -> "tools"; else -> END. Pure routing, no LLM.
+- Assemble: StateGraph(State) -> add_node x2 -> add_edge(START,"agent") -> add_conditional_edges("agent", fn, map)
+  -> add_edge("tools","agent") [the loop-back] -> .compile().
+- The single add_edge("tools","agent") is what creates the LOOP (after a tool runs, go back so the LLM sees the result).
+- Two decisions, two places: LLM (agent node) chooses WHICH tool via docstrings; edge only checks WHETHER a tool call exists.
