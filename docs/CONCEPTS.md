@@ -128,3 +128,12 @@ Goal: be able to explain each of these in an interview without looking.
 - "flash-lite" generation models were fast/stable (~2s); full "flash" models were timing out / 503 under load.
 - Resilience: retry with backoff on transient failures — 429, 5xx, AND client timeouts (status==0). Fail fast on other 4xx.
 - Per-attempt timeout should be short enough to fail fast and retry, not block for a minute.
+
+## Polyglot architecture (what it means)
+- Polyglot = a system built with more than one programming language (many "tongues").
+- This system: Python does ingestion (chunk, embed, write index.json); Go does serving (load, embed query, search, generate).
+- The two don't call each other — they share one file, index.json (Python writes it, Go reads it). JSON is the contract.
+- That's why Go structs need json tags matching Python's keys exactly (doc_id, chunk_id, ...).
+- Why split: Python has the ML ecosystem (ingestion); Go is fast + concurrent for serving. Mirrors real production.
+- Precise wording: the SYSTEM is polyglot; the Go service itself is just Go (one half of the polyglot system).
+- Tradeoff: two codebases + a defined contract; worth it for right-tool-per-job and showcasing Go serving depth.
