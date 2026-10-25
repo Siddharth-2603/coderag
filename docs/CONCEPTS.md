@@ -202,3 +202,10 @@ Goal: be able to explain each of these in an interview without looking.
   -> add_edge("tools","agent") [the loop-back] -> .compile().
 - The single add_edge("tools","agent") is what creates the LOOP (after a tool runs, go back so the LLM sees the result).
 - Two decisions, two places: LLM (agent node) chooses WHICH tool via docstrings; edge only checks WHETHER a tool call exists.
+
+## Demonstrating agentic choice (step 5)
+- Proving it's an agent = show it ROUTES differently by question type (a fixed pipeline would treat all the same).
+- Verified routing: docs Q -> search_docs; math Q ("47*13") -> calculator (SKIPS retrieval); greeting -> NO tool (direct answer).
+- The math + greeting cases are the proof: a fixed RAG would pointlessly retrieve; the agent decides retrieval is irrelevant.
+- No new agent code needed — step 5 just RUNS the existing graph on varied inputs and observes which tool each triggered.
+- Interview demo: this contrast (retrieve vs calculate vs answer-directly) is the clearest evidence of agentic behaviour.
