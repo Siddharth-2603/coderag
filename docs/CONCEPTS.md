@@ -177,3 +177,15 @@ Goal: be able to explain each of these in an interview without looking.
   only + - * / and numbers; anything else is rejected. Verified __import__("os") was blocked. (Strong interview point.)
 - Tools tested in ISOLATION first (call directly, no LLM) to separate "do tools work?" from "does the agent choose right?".
 - tool.invoke({...}) runs a tool; tool.name / tool.description / tool.args show what the LLM will see.
+
+## Agent loop (step 3 — LangGraph ReAct)
+- LangGraph models an agent with: STATE (the growing message list), NODES (units of work), EDGES (flow between nodes).
+- Two nodes: "agent" node (LLM decides next move) and "tools" node (runs the requested tool, appends result to state).
+- Conditional edge: after the agent node, if a tool was requested -> tools node -> BACK to agent node; if final answer -> END.
+- The back-to-agent edge is what makes it a LOOP (think -> act -> observe -> repeat).
+- State ACCUMULATES (question + tool calls + tool results + answer); each node appends. That accumulation is the agent's memory.
+- ReAct = Reasoning + Acting; create_agent() (current API) builds the whole graph (binds tools + wires nodes/edges) for us.
+- temperature=0 -> deterministic tool choices (same question -> same decision), which is what you want for an agent.
+- Observed the agent REPHRASE the question into its own tool query ("authentication token expiration") — real reasoning, not forwarding.
+- Version lesson: create_react_agent (langgraph.prebuilt) is deprecated in v1.0; current is create_agent from langchain.agents (needs the `langchain` package).
+- Gemini may return structured content ([{'type':'text','text':...}]) not a plain string; normalize before printing.
