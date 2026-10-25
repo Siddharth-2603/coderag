@@ -40,3 +40,6 @@ go-service/index.json
 
 # compiled binary (named after the folder)
 go-service/go-service
+
+# python agent virtualenv
+agent/.venv/

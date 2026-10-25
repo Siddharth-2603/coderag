@@ -116,6 +116,20 @@ one-line justification. Aim: answer "why this and not that?" with confidence.
 
 ---
 
+## 13. Python/LangGraph for the agent brain (vs a Go agent loop)
+- **Chose:** build the agent orchestration in Python with LangGraph; keep the Go
+  service as the serving gateway in front.
+- **Alternative:** write the agent loop in Go (started, then reconsidered).
+- **Tradeoff:** Go is great for the *gateway* (many connections, streaming,
+  proxying), but agent-loop latency is dominated by waiting on remote LLM calls
+  (~90%+ of end-to-end time), so Go's speed gives no real latency win for the
+  *brain*. Meanwhile the agent/eval ecosystem (LangGraph, integrations) lives in
+  Python, and "why Go for orchestration?" is hard to defend in an interview.
+- **Why:** match the real-world split — Go serving gateway + Python agent brain.
+  Use each language where it's genuinely strongest; the stronger, more honest story.
+- **Note:** the Go Tool/Toolbox abstraction was removed; the tool *concepts*
+  (name, description, loop) carry over to LangGraph unchanged.
+
 ### Decisions still open / honest "next steps" to mention
 - Swap in a real vector DB (Qdrant/HNSW) for scale.
 - Weighted RRF or BM25 to make hybrid actually help.
