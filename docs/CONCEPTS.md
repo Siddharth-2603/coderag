@@ -148,3 +148,19 @@ Goal: be able to explain each of these in an interview without looking.
 - Run is a function stored as a value: func(args map[string]any) (string, error) — takes LLM-supplied args, returns text result.
 - Toolbox = registry of tools keyed by name, for lookup when the LLM requests one.
 - Go rule noticed: unused EXPORTED types/funcs are fine; only unused local vars/imports are compile errors.
+
+## Gateway (and why Go for it)
+- Gateway = the single entry point in FRONT of the system; handles everything AROUND the core work.
+- It does: receive requests, auth, rate-limit, stream responses, dispatch to the agent brain. NOT the AI reasoning.
+- Analogy: front desk of a building — checks IDs, directs traffic; doesn't do the work inside the offices.
+- Why Go for the gateway: lightweight goroutines (tens of thousands of concurrent connections cheaply), great streaming,
+  low per-request overhead (compiled), first-class net/HTTP/WebSocket + context for timeouts/cancellation.
+- Gateway is CONNECTION-bound (lots of concurrent I/O) -> Go's strength. Brain is LLM-LATENCY-bound -> Python's ecosystem wins.
+- Honest caveat: at a learning-project scale you won't feel Go's advantage; use it because it's the production-correct
+  pattern (defensible in interviews) and it showcases backend depth. Either language would perform fine at small scale.
+
+## venv + Python version
+- venv = an isolated private copy of Python+packages for ONE project, so deps don't collide or pollute system Python.
+- Create: python3.11 -m venv .venv ; activate: source .venv/bin/activate ; install; deactivate when done.
+- The .venv folder IS the env (large, machine-specific) -> gitignore it; recreate via pip install -r requirements.txt.
+- Upgraded agent venv from 3.9 -> 3.11: clears Google-library "3.9 end-of-life" FutureWarnings. 3.11 is fully supported.
