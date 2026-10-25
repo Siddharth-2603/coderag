@@ -37,3 +37,6 @@ env/
 ingestion/index.json
 ingestion/index_*.json
 go-service/index.json
+
+# compiled binary (named after the folder)
+go-service/go-service
