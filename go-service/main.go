@@ -16,8 +16,9 @@ import (
 
 // server holds the shared dependencies for request handlers.
 type server struct {
-	index    *Index
-	embedder *GeminiEmbedder
+	index     *Index
+	embedder  *GeminiEmbedder
+	generator *GeminiGenerator
 }
 
 func main() {
@@ -35,7 +36,11 @@ func main() {
 	}
 	log.Printf("loaded index: %d chunks from %s", len(idx.Chunks), indexPath)
 
-	srv := &server{index: idx, embedder: NewGeminiEmbedder(apiKey)}
+	srv := &server{
+		index:     idx,
+		embedder:  NewGeminiEmbedder(apiKey),
+		generator: NewGeminiGenerator(apiKey),
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handleHealth)
@@ -65,7 +70,8 @@ type queryRequest struct {
 
 type queryResponse struct {
 	Question string        `json:"question"`
-	Results  []ScoredChunk `json:"results"`
+	Answer   string        `json:"answer"`
+	Sources  []ScoredChunk `json:"sources"`
 }
 
 func (s *server) handleQuery(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +96,19 @@ func (s *server) handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	results := s.index.Search(queryVec, req.TopK)
-	writeJSON(w, http.StatusOK, queryResponse{Question: req.Question, Results: results})
+
+	// Generate a grounded answer from the retrieved chunks (the "G" in RAG).
+	answer, err := s.generator.Generate(req.Question, results)
+	if err != nil {
+		log.Printf("generate error: %v", err)
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "generation failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, queryResponse{
+		Question: req.Question,
+		Answer:   answer,
+		Sources:  results,
+	})
 }
 
 // --- helpers ---

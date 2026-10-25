@@ -117,3 +117,14 @@ Goal: be able to explain each of these in an interview without looking.
 - Observed: ~0.6-1.6s per query, almost all of it the Gemini API call; cosine search itself is sub-millisecond.
 - That latency is the motivation for a future semantic cache (avoid re-embedding/re-answering repeat queries).
 - Ops gotcha: a stale server can hold the port ("address already in use"); find+kill with lsof -ti:PORT.
+
+## Generation (M2 — the G in RAG)
+- Generation = feed retrieved chunks to an LLM as CONTEXT and have it write a grounded answer.
+- Grounding = instruct the model to answer ONLY from the provided context and admit when it can't.
+- Why grounding: reduces hallucination + lets the model answer about YOUR data (not its training) + enables citing sources.
+- Return answer AND source chunks so the answer is verifiable (you can see which docs it came from).
+- Verified: in-corpus question -> cited answer; out-of-corpus ("refund policy") -> "I don't know based on the provided documents" (no hallucination).
+- Embedding model and generation model are DIFFERENT endpoints/models (gemini-embedding-001 vs a flash generation model).
+- "flash-lite" generation models were fast/stable (~2s); full "flash" models were timing out / 503 under load.
+- Resilience: retry with backoff on transient failures — 429, 5xx, AND client timeouts (status==0). Fail fast on other 4xx.
+- Per-attempt timeout should be short enough to fail fast and retry, not block for a minute.
