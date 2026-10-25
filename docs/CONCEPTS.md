@@ -164,3 +164,16 @@ Goal: be able to explain each of these in an interview without looking.
 - Create: python3.11 -m venv .venv ; activate: source .venv/bin/activate ; install; deactivate when done.
 - The .venv folder IS the env (large, machine-specific) -> gitignore it; recreate via pip install -r requirements.txt.
 - Upgraded agent venv from 3.9 -> 3.11: clears Google-library "3.9 end-of-life" FutureWarnings. 3.11 is fully supported.
+
+## Agent tools in LangChain (step 2)
+- A LangChain tool = a normal Python function + the @tool decorator.
+- The decorator auto-generates the function-calling declaration from: function name, docstring, typed params.
+  name -> tool name ; docstring -> description (LLM reads this to choose) ; params -> args ; body -> what runs.
+- Confirms the Go Tool struct fields were language-agnostic concepts; Python just expresses them natively.
+- Built two tools so the agent has a real CHOICE: search_docs (retrieval) and calculator (math -> lets it skip retrieval).
+- search_docs reuses the existing ingestion modules (same embedder/store as the eval) — reuse proven code, don't rewrite.
+- Lazy singleton: build the index once on first tool use and cache it (embedding every chunk costs API calls).
+- SECURITY: calculator does NOT use eval() (eval runs arbitrary code = injection risk). It parses an AST and whitelists
+  only + - * / and numbers; anything else is rejected. Verified __import__("os") was blocked. (Strong interview point.)
+- Tools tested in ISOLATION first (call directly, no LLM) to separate "do tools work?" from "does the agent choose right?".
+- tool.invoke({...}) runs a tool; tool.name / tool.description / tool.args show what the LLM will see.
