@@ -137,3 +137,14 @@ Goal: be able to explain each of these in an interview without looking.
 - Why split: Python has the ML ecosystem (ingestion); Go is fast + concurrent for serving. Mirrors real production.
 - Precise wording: the SYSTEM is polyglot; the Go service itself is just Go (one half of the polyglot system).
 - Tradeoff: two codebases + a defined contract; worth it for right-tool-per-job and showcasing Go serving depth.
+
+## Agents (step 1 — concept + tool abstraction)
+- Basic RAG = fixed flow (always retrieve -> generate). Agent = the LLM decides which steps/tools to use.
+- Agent core loop: think -> act (call a tool) -> observe (tool result) -> repeat, until the LLM gives a final answer.
+- The LLM never runs code; it only ASKS to call a tool by name with args. Our code runs the tool and feeds the result back.
+- Why beyond basic RAG: agent can skip retrieval when pointless (e.g. "2+2"), retrieve multiple times, or use other tools.
+- Why Go suits agents: goroutines + context give easy concurrency (parallel tools) and timeouts (don't let a slow tool hang).
+- Tool = {Name (what LLM calls it), Description (tells LLM WHEN to use it — wording matters), Params, Run (the Go func)}.
+- Run is a function stored as a value: func(args map[string]any) (string, error) — takes LLM-supplied args, returns text result.
+- Toolbox = registry of tools keyed by name, for lookup when the LLM requests one.
+- Go rule noticed: unused EXPORTED types/funcs are fine; only unused local vars/imports are compile errors.
