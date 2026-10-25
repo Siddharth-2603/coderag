@@ -49,3 +49,23 @@ Protected path: **RAG core + eval harness** always ships before serving-layer po
 ## Interview launch
 - Resume rewrite around this project + Go backend depth
 - Start applying once M3 is solid with real eval numbers
+
+
+## Later milestones (tracked, sequenced after the agent layer)
+
+These are valuable but deliberately deferred so the agent layer (higher value
+for the AI-engineer target) comes first. Do them if time allows before January.
+
+### MCP server wrapper (provider side of tool-calling)
+- Expose the RAG /query as an MCP (Model Context Protocol) server so any
+  MCP-capable assistant can call it as a tool ("search my project's docs").
+- Complements the agent layer: agent = LLM CALLS tools; MCP = we EXPOSE tools to other LLMs.
+- Value: current/in-demand; strong resume line; deepens tool-calling understanding.
+
+### GCP deployment (the infra / "I operated it" story)
+- NOTE: GCP account exists but is UNUSED so far — everything currently runs locally.
+  Can't claim GCP on the resume until this is done.
+- Containerize the Go service (Docker) -> deploy to GKE (managed Kubernetes) ->
+  provision with Terraform. Add basic metrics/observability.
+- Value: turns "I built a service" into "I deployed & operated it on GCP" (infra story).
+- Lower priority than agents for the AI-engineer target, but a strong capstone.
