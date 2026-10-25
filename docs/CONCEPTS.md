@@ -209,3 +209,24 @@ Goal: be able to explain each of these in an interview without looking.
 - The math + greeting cases are the proof: a fixed RAG would pointlessly retrieve; the agent decides retrieval is irrelevant.
 - No new agent code needed — step 5 just RUNS the existing graph on varied inputs and observes which tool each triggered.
 - Interview demo: this contrast (retrieve vs calculate vs answer-directly) is the clearest evidence of agentic behaviour.
+
+## Production agent architecture (target shape)
+- 3 layers: Go INGRESS GATEWAY (auth, rate-limit, streaming, routing, 100k conns)
+  -> Python AGENT (LangGraph ReAct loop, state/checkpointing) -> BACKING SERVICES (tools).
+- Request flows DOWN through layers and back UP once (not ping-pong). Bottom Go services != the top Go gateway.
+- What we build (vertical slice): Go gateway -> Python agent -> existing tools. Working end-to-end.
+- What we only MENTION (productionizing): Redis/Postgres checkpointing, gRPC, circuit breakers, token billing, 100k conns.
+
+## Tools: retrieval vs action
+- Retrieval tool (search_docs) = fetch INFORMATION. Action tool (process_order) = DO something in another system.
+- Action tools are what make agents powerful (create orders, update records) — not just Q&A.
+- Mechanism is the same: the tool's Run sends an HTTP call to a backing Go/Java microservice and returns the result.
+
+## Adding a new source (e.g. Jira / Confluence) — two ways
+- Approach 1 INGEST: pull pages via their REST API -> chunk -> embed -> vector store; search_docs finds them.
+  Use for STATIC reference content you want to search semantically (design docs, runbooks). Just a new ingestion connector.
+- Approach 2 LIVE TOOL: a tool (e.g. search_jira) that queries the API in REAL TIME when the agent calls it.
+  Use for DYNAMIC content/actions ("open tickets now", "status of PROJ-123").
+- MCP = the STANDARDIZED way to do Approach 2: vendors (e.g. Atlassian) publish MCP servers exposing Jira/Confluence
+  as ready-made tools, so you connect to them instead of hand-coding the API integration.
+- Rule of thumb: static+searchable -> ingest; dynamic/live/actions -> tool (MCP if a server exists). Real systems do BOTH.
