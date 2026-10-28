@@ -43,3 +43,5 @@ go-service/go-service
 
 # python agent virtualenv
 agent/.venv/
+
+gateway/gateway

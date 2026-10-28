@@ -246,3 +246,25 @@ Goal: be able to explain each of these in an interview without looking.
   (2) switch model to gemini-flash-lite-latest (the other was overloaded). Same 503 lesson as M2 generation.
 - General lesson: always set explicit timeout + bounded retries on external API calls, and log full errors server-side
   (my first handler hid the real error, making it look like a code bug when it was a 503).
+
+## Registration vs execution (when the index is built)
+- Registering a tool (giving the LLM its name+description) does NOT run the tool's body.
+- Build-graph at startup = tools registered; NO tool code runs yet, so NO index/embeddings built.
+- The index builds ONLY when search_docs is actually CALLED (LLM chose it) -> _ensure_index() runs on first such call.
+- A pure math/greeting question never calls search_docs -> index is never built. Lazy = pay embedding cost only when needed.
+- Two embedding types / two times: DOCUMENT embeddings = whole corpus, once (lazy in agent / offline in Go via ingest.py);
+  QUERY embedding = one per request (can't precompute an unknown question).
+
+## Go gateway (integration half 2 — architecture complete)
+- Gateway is a SEPARATE Go program (gateway/) from the RAG service (go-service/): different role = different deployable.
+- Flow: client --POST /ask--> gateway :8080 --POST /agent--> python agent :9000 --> tools --> answer --> back.
+- Gateway does edge concerns only (log, rate-limit, forward, relay) — NO RAG/agent reasoning.
+- "Go calls Python" = Go sends an HTTP POST to the running Python server. Cross-language = HTTP, not imports.
+- Gateway client timeout (90s) must EXCEED the agent's internal LLM timeout so the agent can finish before we give up;
+  server WriteTimeout must exceed the client timeout too.
+- /healthz also pings the agent's /healthz -> reports agent_reachable (a gateway should know if its backend is alive).
+- Rate limiter: fixed-window per client, guarded by a Mutex (safe across concurrent goroutines). Rejects with 429
+  BEFORE calling the agent (protect the backend). Fixed-window is simplest; prod uses token-bucket/sliding-window.
+- BUG found + fixed: keyed the limiter on r.RemoteAddr (ip:PORT) -> port changes per request -> every request looked
+  like a new client -> limiter never fired. Fix: net.SplitHostPort to key on IP only. (Verified 429 after the fix.)
+- Productionizing (mention, not built): auth, response streaming, circuit breaking, X-Forwarded-For parsing.
