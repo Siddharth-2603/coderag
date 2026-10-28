@@ -268,3 +268,15 @@ Goal: be able to explain each of these in an interview without looking.
 - BUG found + fixed: keyed the limiter on r.RemoteAddr (ip:PORT) -> port changes per request -> every request looked
   like a new client -> limiter never fired. Fix: net.SplitHostPort to key on IP only. (Verified 429 after the fix.)
 - Productionizing (mention, not built): auth, response streaming, circuit breaking, X-Forwarded-For parsing.
+
+## defer + mutex, and IP-vs-port in rate limiting
+- defer X runs X when the surrounding FUNCTION returns (any return path, even a panic) — not end-of-block.
+- "lock then defer unlock" guarantees the mutex is released on every exit path; avoids forgetting an unlock on a new return = deadlock. Idiomatic Go.
+- Two different ports: SERVER port (gateway :8080, fixed, every client connects to it) vs CLIENT SOURCE port (random
+  ephemeral port the client OS picks PER CONNECTION).
+- r.RemoteAddr = clientIP:clientSourcePort (the client's address, not the server's :8080).
+- Source port VARIES per connection: curl = new port each call; browsers open several connections = several ports.
+  That's why keying the limiter on ip:port made every request look like a new client (the bug).
+- Fix: key on IP only (stable per machine). Verified it then limits correctly.
+- Caveat (prod): IP isn't ideal — users behind one NAT/proxy share an IP (shared bucket); mobile IPs change.
+  Production rate-limits on API key / authenticated user id instead.
