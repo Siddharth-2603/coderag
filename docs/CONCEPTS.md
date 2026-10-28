@@ -230,3 +230,19 @@ Goal: be able to explain each of these in an interview without looking.
 - MCP = the STANDARDIZED way to do Approach 2: vendors (e.g. Atlassian) publish MCP servers exposing Jira/Confluence
   as ready-made tools, so you connect to them instead of hand-coding the API integration.
 - Rule of thumb: static+searchable -> ingest; dynamic/live/actions -> tool (MCP if a server exists). Real systems do BOTH.
+
+## Go<->Python integration: Python agent as HTTP server (half 1)
+- To let the Go gateway "call" the agent, the agent runs as an HTTP SERVER (POST /agent, GET /healthz).
+- Communication is HTTP between two running programs — NOT importing code across languages.
+- Used Python's built-in http.server (no dependency); production would use FastAPI+uvicorn (async, validation, concurrency).
+- Build the graph ONCE at startup, reuse per request (don't rebuild index/recompile graph each call).
+- Error handling: a failed request returns 502 and is logged server-side, but does NOT crash the server (try/except).
+
+## Debugging lesson: silent LLM hangs
+- Symptom: /agent requests hung for minutes, then GoogleAPIError. healthz fine (so server was alive).
+- Root cause: transient 503 "model experiencing high demand" on gemini-3.1-flash-lite + the client's built-in
+  retries with long backoff = long silent stalls.
+- Fixes applied: (1) set timeout=30 + max_retries=2 on the LLM so a flaky call FAILS FAST instead of hanging;
+  (2) switch model to gemini-flash-lite-latest (the other was overloaded). Same 503 lesson as M2 generation.
+- General lesson: always set explicit timeout + bounded retries on external API calls, and log full errors server-side
+  (my first handler hid the real error, making it look like a code bug when it was a 503).

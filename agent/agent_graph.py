@@ -58,7 +58,11 @@ class AgentState(TypedDict):
 
 # Model with tools bound (so it can emit tool_calls), and a tool registry so
 # the tools node can look up a tool by the name the LLM asked for.
-_llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0)
+# timeout caps how long a single Gemini call may stall; max_retries bounds the
+# client's built-in silent retries so a flaky call fails fast instead of hanging.
+_llm = ChatGoogleGenerativeAI(
+    model="gemini-flash-lite-latest", temperature=0, timeout=30, max_retries=2
+)
 _tools = [search_docs, calculator]
 _llm_with_tools = _llm.bind_tools(_tools)
 _tools_by_name = {t.name: t for t in _tools}
