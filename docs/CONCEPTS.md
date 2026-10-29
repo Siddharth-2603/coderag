@@ -292,3 +292,14 @@ Goal: be able to explain each of these in an interview without looking.
 - Wiring into a client = a JSON config entry (command=venv python, args=[mcp_server.py]) in e.g. .kiro/settings/mcp.json.
 - Verified: list_tools() -> ['search_docs']; call_tool('search_docs',{...}) -> CallToolResult with source-cited chunks.
 - Version lesson (again): MCP SDK v2 renamed FastMCP -> MCPServer. APIs drift; read the current one. (pin mcp<2 for v1.)
+
+## Confluence connector (ingesting an external source)
+- A connector only adds "fetch + clean"; it REUSES the existing pipeline (chunk -> embed -> store).
+- Split for testability: ConfluenceClient (network, needs token) vs normalize_page (pure logic) vs a Mock client (canned pages).
+- PageSource interface lets mock and real clients swap freely -> verify the whole path offline, add creds later, no code change.
+- Confluence API: GET /wiki/rest/api/content?expand=body.storage ; auth = HTTP Basic email:api_token over HTTPS.
+- Body is storage-format XHTML -> strip tags to text (block tags -> newlines) before chunking.
+- Stable doc_id CONF:<page_id> so re-ingest UPDATES not duplicates (basis of incremental sync).
+- Carry metadata (source/title/url/updated_at) onto each chunk so answers can CITE the exact page.
+- CRITICAL for real use: ACL/permissions — enforce per-user access at query time or RAG leaks restricted pages.
+- Jira (dynamic) -> better as a LIVE TOOL / Atlassian MCP, not pre-ingested. Confluence (static docs) -> ingest.

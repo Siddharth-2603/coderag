@@ -45,3 +45,6 @@ go-service/go-service
 agent/.venv/
 
 gateway/gateway
+
+connectors/*_index.json
+connectors/__pycache__/
