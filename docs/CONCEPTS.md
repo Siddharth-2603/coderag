@@ -280,3 +280,15 @@ Goal: be able to explain each of these in an interview without looking.
 - Fix: key on IP only (stable per machine). Verified it then limits correctly.
 - Caveat (prod): IP isn't ideal — users behind one NAT/proxy share an IP (shared bucket); mobile IPs change.
   Production rate-limits on API key / authenticated user id instead.
+
+## MCP server (provider side of tool-calling)
+- Agent = tool CONSUMER (its LLM calls tools). MCP server = tool PROVIDER (other AIs call OUR tool).
+- MCP = a protocol (JSON-RPC) letting an AI client discover + call tools/resources/prompts on a server.
+- Transport: stdio is the common local pattern — client launches the server as a subprocess, talks over stdin/stdout.
+  (HTTP/SSE transport also exists.) Different from our gateway's plain HTTP.
+- A server exposes tools (callable fns), resources (readable data), prompts (templates). We exposed one tool: search_docs.
+- Our MCP server is a THIN wrapper reusing the agent's existing retrieval — one retrieval impl, exposed two ways.
+- @server.tool() registers a fn; the SDK builds the tool declaration from name+docstring+typed params (like LangChain @tool).
+- Wiring into a client = a JSON config entry (command=venv python, args=[mcp_server.py]) in e.g. .kiro/settings/mcp.json.
+- Verified: list_tools() -> ['search_docs']; call_tool('search_docs',{...}) -> CallToolResult with source-cited chunks.
+- Version lesson (again): MCP SDK v2 renamed FastMCP -> MCPServer. APIs drift; read the current one. (pin mcp<2 for v1.)
